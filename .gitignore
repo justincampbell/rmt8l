@@ -2,6 +2,5 @@
 /rmt8l@*
 tx-settings.bin
 tx-settings.txt
-PROMPT.md
 !internal/proto/testdata/tx-settings.bin
 !internal/proto/testdata/tx-settings.txt
