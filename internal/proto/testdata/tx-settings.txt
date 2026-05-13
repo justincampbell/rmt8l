@@ -1,0 +1,181 @@
+radio: RM T8L
+module: ELRS
+settings_count: 20
+
+settings:
+  - id: 01  parent: 00  type: selection
+    name: Packet Rate
+    value:   [3] 250Hz(-108dBm)
+    default: [0]
+    options:
+        [0] 50Hz(-115dBm)
+        [1] 100Hz Full(-112dBm)
+        [2] 150Hz(-112dBm)
+      * [3] 250Hz(-108dBm)
+        [4] 333Hz Full(-105dBm)
+        [5] 500Hz(-105dBm)
+        [6] D250(-104dBm)
+        [7] D500(-104dBm)
+        [8] F500(-104dBm)
+        [9] F1000(-104dBm)
+
+  - id: 02  parent: 00  type: selection
+    name: Telem Ratio
+    value:   [0] Std  (1:64)
+    default: [0]
+    options:
+      * [0] Std
+        [1] Off
+        [2] 1:128
+        [3] 1:64
+        [4] 1:32
+        [5] 1:16
+        [6] 1:8
+        [7] 1:4
+        [8] 1:2
+        [9] Race
+
+  - id: 03  parent: 00  type: selection
+    name: Switch Mode
+    value:   [0] Wide
+    default: [0]
+    options:
+      * [0] Wide
+        [1] Hybrid
+
+  - id: 04  parent: 00  type: selection
+    name: Link Mode
+    value:   [0] Normal
+    default: [0]
+    options:
+      * [0] Normal
+        [1] MAVLink
+
+  - id: 05  parent: 00  type: selection
+    name: Model Match
+    value:   [0] Off  (ID: 0)
+    default: [0]
+    options:
+      * [0] Off
+        [1] On
+
+  - id: 06  parent: 00  type: folder
+    name: TX Power (100mW)
+
+  - id: 07  parent: 06  type: selection
+    name: Max Power
+    value:   [3] 100 mW
+    default: [0]
+    options:
+        [0] 10
+        [1] 25
+        [2] 50
+      * [3] 100
+
+  - id: 08  parent: 06  type: selection
+    name: Dynamic
+    value:   [0] Off
+    default: [0]
+    options:
+      * [0] Off
+        [1] Dyn
+        [2] AUX9
+        [3] AUX10
+        [4] AUX11
+        [5] AUX12
+
+  - id: 09  parent: 00  type: folder
+    name: VTX Administrator
+
+  - id: 10  parent: 09  type: selection
+    name: Band
+    value:   [0] Off
+    default: [0]
+    options:
+      * [0] Off
+        [1] A
+        [2] B
+        [3] E
+        [4] F
+        [5] R
+        [6] L
+
+  - id: 11  parent: 09  type: uint8
+    name: Channel
+    value:   1
+    range:   1..8
+    default: 0
+
+  - id: 12  parent: 09  type: selection
+    name: Pwr Lvl
+    value:   [0] -
+    default: [0]
+    options:
+      * [0] -
+        [1] 1
+        [2] 2
+        [3] 3
+        [4] 4
+        [5] 5
+        [6] 6
+        [7] 7
+        [8] 8
+
+  - id: 13  parent: 09  type: selection
+    name: Pitmode
+    value:   [0] Off
+    default: [0]
+    options:
+      * [0] Off
+        [1] On
+        [2] AUX1↓
+        [3] AUX1↑
+        [4] AUX2↓
+        [5] AUX2↑
+        [6] AUX3↓
+        [7] AUX3↑
+        [8] AUX4↓
+        [9] AUX4↑
+        [10] AUX5↓
+        [11] AUX5↑
+        [12] AUX6↓
+        [13] AUX6↑
+        [14] AUX7↓
+        [15] AUX7↑
+        [16] AUX8↓
+        [17] AUX8↑
+        [18] AUX9↓
+        [19] AUX9↑
+        [20] AUX10↓
+        [21] AUX10↑
+
+  - id: 14  parent: 09  type: command
+    name: Send VTx
+    status:  0
+    timeout: 200
+
+  - id: 15  parent: 00  type: folder
+    name: WiFi Connectivity
+
+  - id: 16  parent: 15  type: command
+    name: Enable WiFi
+    status:  0
+    timeout: 200
+
+  - id: 17  parent: 15  type: command
+    name: Enable Rx WiFi
+    status:  0
+    timeout: 200
+
+  - id: 18  parent: 00  type: command
+    name: Bind
+    status:  0
+    timeout: 200
+
+  - id: 19  parent: 00  type: info (live)
+    name: Bad/Good
+    value:   0/256
+
+  - id: 20  parent: 00  type: info
+    name: master ISM2G4
+    value:   d84313

@@ -1,0 +1,39 @@
+version: 2
+
+# darwin only for now: go.bug.st/serial requires CGO with IOKit on macOS,
+# and cross-compiling adds complexity we don't need yet. Mirrors bfctl.
+builds:
+  - env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Tag}}
+
+archives:
+  - files:
+      - README.md
+      - LICENSE
+
+snapshot:
+  version_template: "dev-{{.ShortCommit}}"
+
+changelog:
+  use: github-native
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - repository:
+      owner: justincampbell
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/justincampbell/rmt8l
+    description: CLI for backing up and inspecting Radiomaster T8L radio configuration over USB
+    license: MIT
