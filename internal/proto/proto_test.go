@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,6 +74,25 @@ func TestFindPacketRejectsMissingSentinel(t *testing.T) {
 	_, _, err := FindPacket([]byte{0x00, 0x01, 0x02, '\r', '\n'})
 	if err == nil {
 		t.Fatal("expected error for missing sentinel")
+	}
+	if !errors.Is(err, ErrNoPacket) {
+		t.Fatalf("expected ErrNoPacket, got %v", err)
+	}
+}
+
+// TestDecodeUnframedReturnsErrNoPacket simulates the RX-empty case: the
+// radio is in management mode but no RX is bound, so the captured bytes
+// contain only live-noise (link / progress packets) and no 0x56 sentinel.
+// Decode must surface ErrNoPacket so the backup command can branch cleanly.
+func TestDecodeUnframedReturnsErrNoPacket(t *testing.T) {
+	// 14-byte 0x67 link packet + 5-byte 0x23 progress packet; no 0x56.
+	noise := []byte{
+		0x67, 0x0c, 0x14, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0x23, 0x03, 0x00, 0x00, 0x00,
+	}
+	_, err := Decode(noise)
+	if !errors.Is(err, ErrNoPacket) {
+		t.Fatalf("expected ErrNoPacket, got %v", err)
 	}
 }
 

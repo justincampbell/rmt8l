@@ -29,12 +29,29 @@ const (
 	// CmdTXRefresh asks the radio for the full TX-side ELRS settings dump.
 	// `A5 11 00 0D 0A` — subsystem 0x11, command 0x00, no args.
 	CmdTXRefresh = "\xa5\x11\x00\r\n"
+
+	// CmdRXRefresh asks the radio for the bound RX's ELRS settings.
+	// `A5 22 00 0D 0A`. The radio has to poll the RX over the air, so the
+	// response is slower and may be absent entirely if no RX is powered.
+	CmdRXRefresh = "\xa5\x22\x00\r\n"
+
+	// CmdDeviceInfo asks the radio for the `0xFF` device-state packet —
+	// volume, slider midpoint, calibration, firmware versions, etc. The
+	// configurator calls this `devAttrCmd`. The response is unframed (no
+	// 0x56 sentinel, no CRLF terminator); see PullDeviceInfo.
+	CmdDeviceInfo = "\xa5\x55\x1d\r\n"
 )
 
 // ErrNoRadio is returned when no T8L is present on any USB serial port.
 // The most common cause by far: the radio is in runtime mode (no USB
 // device) rather than management mode (M held while powering on).
 var ErrNoRadio = errors.New("no Radiomaster T8L found in management mode")
+
+// errNoBytes is the low-level signal that the radio sent absolutely nothing
+// during the read window — not even live-noise. Callers translate it into
+// the appropriate higher-level meaning: for TX that's "radio not in mode";
+// for RX that's "no receiver bound and powered" (an expected, clean state).
+var errNoBytes = errors.New("no bytes received from radio")
 
 // ErrMultipleRadios means more than one matching radio is connected.
 // The caller should ask the user to pick one via `--port`.
@@ -102,12 +119,52 @@ func Resolve(explicit string) (string, error) {
 	}
 }
 
-// PullTXSettings opens the port, sends A5 11 00 0D 0A, and reads bytes
-// until a `0D 0A` terminator arrives or the link goes idle. Returns the
-// raw response (still containing live-noise prefix bytes); decoding is
-// the caller's job — keeping the transport ignorant of framing means a
-// future `restore` path can reuse it without surgery.
+// PullTXSettings sends `A5 11 00 0D 0A` and returns the raw response. A
+// `radio.errNoBytes` from pull() is translated into a user-facing hint
+// because for TX it almost always means the radio is in runtime mode
+// rather than management mode.
 func PullTXSettings(path string) ([]byte, error) {
+	out, err := pull(path, []byte(CmdTXRefresh), 3*time.Second)
+	if errors.Is(err, errNoBytes) {
+		return nil, errors.New("no response — is the radio in M+power management mode?")
+	}
+	return out, err
+}
+
+// PullRXSettings sends `A5 22 00 0D 0A` and returns the raw response. The
+// radio polls the bound RX over the air, so this is slower than TX. With
+// no RX bound and powered, the radio simply doesn't reply — we observed it
+// going completely silent (not even the usual link/progress noise). We
+// surface that as an empty success `(nil, nil)`; the caller's `proto.Decode`
+// will return `proto.ErrNoPacket`, which `cmdBackup` treats as a clean skip.
+// This relies on PullRXSettings only being called AFTER a TX pull has
+// already proven the radio is in management mode — otherwise a silent radio
+// might be misread as "no RX" when in fact the radio is off.
+func PullRXSettings(path string) ([]byte, error) {
+	out, err := pull(path, []byte(CmdRXRefresh), 4*time.Second)
+	if errors.Is(err, errNoBytes) {
+		return nil, nil
+	}
+	return out, err
+}
+
+// PullDeviceInfo sends `A5 55 1D 0D 0A` and returns the raw bytes received
+// during the read window. Unlike TX/RX settings, the `0xFF` device-info
+// response has no 0x56 sentinel and no CRLF terminator, so the read loop
+// just collects bytes until the link goes idle for ~400 ms (or the total
+// timeout expires). The caller is expected to feed the result through
+// `proto.FindDeviceInfo`, which scans for the framed packet and validates
+// the CRC8 — the radio also emits link/progress noise that can contain
+// stray 0xFF bytes, so position-in-buffer alone is not enough.
+func PullDeviceInfo(path string) ([]byte, error) {
+	return pull(path, []byte(CmdDeviceInfo), 3*time.Second)
+}
+
+// pull opens the port, sends the given request, and reads bytes until a
+// `0D 0A` terminator arrives after the `0x56` sentinel or the link goes
+// idle. The transport stays ignorant of framing so a future write/restore
+// path can reuse it.
+func pull(path string, cmd []byte, totalTimeout time.Duration) ([]byte, error) {
 	port, err := serial.Open(path, &serial.Mode{
 		BaudRate: Baud,
 		DataBits: 8,
@@ -132,18 +189,11 @@ func PullTXSettings(path string) ([]byte, error) {
 		return nil, err
 	}
 
-	if _, err := port.Write([]byte(CmdTXRefresh)); err != nil {
+	if _, err := port.Write(cmd); err != nil {
 		return nil, fmt.Errorf("write request: %w", err)
 	}
 
-	out, err := readResponse(port, 3*time.Second, 400*time.Millisecond)
-	if err != nil {
-		return out, err
-	}
-	if len(out) == 0 {
-		return nil, errors.New("no response — is the radio in M+power management mode?")
-	}
-	return out, nil
+	return readResponse(port, totalTimeout, 400*time.Millisecond)
 }
 
 // readResponse reads bytes until the stream goes idle for `idle` or `total`
@@ -162,7 +212,7 @@ func readResponse(port serial.Port, total, idle time.Duration) ([]byte, error) {
 	for {
 		if time.Now().After(deadline) {
 			if !seen {
-				return nil, errors.New("timed out waiting for radio response")
+				return nil, errNoBytes
 			}
 			return out, nil
 		}
