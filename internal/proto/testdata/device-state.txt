@@ -1,0 +1,32 @@
+device:
+  name:            RadioMaster T8L
+  serial:          360217591a504542563934303001842a
+  elrs_firmware:   master ISM2G4
+  device_firmware: v1.6
+  elrs_name:       RM T8L
+  company:         RadioMaster
+
+settings:
+  volume:            12 # 48%
+  slider_mid:        0
+  slider_mid_data:   1572
+  calibration_flag:  89
+  channel_num:       10
+  power_val:         0
+  send_pack_speed:   4
+  return_speed:      6
+  connect_protocol:  0
+  secret_key:        165
+  remote_ctl_class:  2
+  mixed_ctl:         1
+  rx_warning:        1
+  low_power_warning: 1
+  left_trim_reset:   1
+  right_trim_reset:  1
+  key_model:         06 04 04 06 01 07
+    SA: [06] Click
+    SB: [04] 3-POS
+    SC: [04] 3-POS
+    SD: [06] Click
+    SE: [01] 2-POS
+    --: [07] terminator

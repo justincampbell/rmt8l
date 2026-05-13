@@ -69,6 +69,13 @@ const (
 // byte stream the radio emits while idle.
 const sentinel = 0x56
 
+// ErrNoPacket means the radio replied (or live-noise was captured) but no
+// 0x56 framing was present. This is the normal state for an `A5 22` RX-side
+// settings request when no RX is bound and powered: the radio keeps emitting
+// link/progress noise but never sends a settings packet. Callers can branch
+// on `errors.Is(err, proto.ErrNoPacket)` to treat that as a clean skip.
+var ErrNoPacket = errors.New("no 0x56 sentinel in response")
+
 // Chunk is one decoded chunk from the response body.
 type Chunk struct {
 	Marker  byte
@@ -170,7 +177,7 @@ func Decode(raw []byte) (Response, error) {
 func FindPacket(raw []byte) (body, bodyCRC []byte, err error) {
 	i := bytes.IndexByte(raw, sentinel)
 	if i < 0 {
-		return nil, nil, errors.New("no 0x56 sentinel in response")
+		return nil, nil, ErrNoPacket
 	}
 	if !bytes.HasSuffix(raw, []byte{'\r', '\n'}) {
 		return nil, nil, fmt.Errorf("response missing CRLF terminator (tail: %x)", trailing(raw, 6))
